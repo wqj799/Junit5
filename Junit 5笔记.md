@@ -81,7 +81,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 public class DisplayNameGeneratorDemo {
-    
+
     @Nested
     @DisplayNameGeneration(DisplayNameGenerator.Standard.class)
     class Standard {
@@ -129,7 +129,6 @@ public class DisplayNameGeneratorDemo {
         } 
     }
 }
-
 ```
 
 ### 2.2设置默认的生成器
@@ -152,7 +151,7 @@ junit.jupiter.displayname.generator.default = org.junit.jupiter.api.DisplayNameG
 
 ## 3.Assertions（断言）
 
-**在Junit 5中所有的断言都是org.junit.jupiter.api.Assertions类中的静态方法。**
+**在Junit 5中所有的断言都是org.junit.jupiter.api.Assertions包中的静态方法。**
 
 ```java
 import static java.time.Duration.ofMillis;
@@ -260,5 +259,48 @@ class AssertionsDemo {
 **注意**
 
 assertTimeoutPreemptively()属于抢占式超时，与声明式超时相反，assertTimeoutPreemptively()将另起一个新的线程执行任务。因此如果使用`java.lang.ThreadLocal`存储可能会有副作用。
+
+## 4.Assumptions（假设）
+
+Assumptions方法中可以使用lambda表达式和方法引用。
+
+**在Junit 5中所有的假设方法都是org.junit.jupiter.api.Assumptions包中的静态方法。**
+
+```java
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
+import static org.junit.jupiter.api.Assumptions.assumingThat;
+
+import example.util.Calculator;
+
+import org.junit.jupiter.api.Test;
+
+class AssumptionsDemo {
+
+    private final Calculator calculator = new Calculator();
+
+    @Test
+    void testOnlyOnCiServer() {
+        assumeTrue("CI".equals(System.getenv("ENV")));
+    }
+
+    @Test
+    void testOnlyOnDeveloperWorkstation() {
+        // 使用lambda表达式
+        assumeTrue("DEV".equals(System.getenv("ENV")),
+            () -> "Aborting test: not on developer workstation");
+    }
+}
+```
+
+## 5.Disabling Tests（禁用测试）
+
+在测试类上使用@Disabled注解可以禁用整个测试类。
+
+在测试方法上使用@Disabled注解可以禁用单独的一个测试方法。
+
+## 6.Conditional Test Execution（基于条件执行测试）
+
+`org.junit.jupiter.api.condition`包提供了基于注释的条件使开发人员可以以编程的方式基于特定条件启用或禁用测试。当使用了多个条件时，一旦其中的一个条件返回disabled，则这个测试将会被禁用。
 
 
