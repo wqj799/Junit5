@@ -1,6 +1,6 @@
 # 概述
 
-## 1.什么是Junit 5
+## 1. 什么是Junit 5
 
 Junit 5 由三个子模块组成：
 
@@ -12,13 +12,13 @@ Junit 5 由三个子模块组成：
 
 - Junit Vintage提供了运行基于Junit 3和Junit 4的测试环境。
 
-## 2.支持的Java版本
+## 2. 支持的Java版本
 
 Junit 5运行时需要Java 8（或更高）版本。但是编译时可以使用低版本的JDK。
 
 # 编写测试
 
-## 1.测试类和测试方法
+## 1. 测试类和测试方法
 
 - 测试类：任何的顶级类，静态类，或是使用@Nested修饰的包含至少一个测试方法的类都可以时测试类。**测试类不能是抽象的，并且必须有一个无参构造方法。**
 
@@ -28,7 +28,7 @@ Junit 5运行时需要Java 8（或更高）版本。但是编译时可以使用�
   
   **测试方法和生命周期方法可以在当前类中声明，也可以从超类继承或是从接口继承。另外，它们不能是抽象的，也不能有返回值（@TestFactory注解的方法除外）。**
 
-## 2.Display Names（显示名称）
+## 2. Display Names（显示名称）
 
 使用此注解可以在测试报告和IDE中给测试类和测试方法自定义显示名称。该显示名称可以使用空白，特殊字符，甚至是emoji等。
 
@@ -57,7 +57,7 @@ class DisplayNameDemo {
 }
 ```
 
-### 2.1自定义生成器
+### 2.1 自定义生成器
 
 显示名称可以按照一定的规则自动生成。使用@DisplayNameGeneration注解可以自定义显示名称的生成。以下表格展示了Junit 5中可以使用的生成器：
 
@@ -131,7 +131,7 @@ public class DisplayNameGeneratorDemo {
 }
 ```
 
-### 2.2设置默认的生成器
+### 2.2 设置默认的生成器
 
 如果要将`ReplaceUnderscore`生成器设置为默认生成器，可以在`src/test/resource/junit-platform.properties`中定义如下属性：
 
@@ -149,7 +149,7 @@ junit.jupiter.displayname.generator.default = org.junit.jupiter.api.DisplayNameG
 
 4. 调用`org.junit.jupiter.api.DisplayNameGenerator.Standard`
 
-## 3.Assertions（断言）
+## 3. Assertions（断言）
 
 **在Junit 5中所有的断言都是org.junit.jupiter.api.Assertions包中的静态方法。**
 
@@ -260,7 +260,7 @@ class AssertionsDemo {
 
 assertTimeoutPreemptively()属于抢占式超时，与声明式超时相反，assertTimeoutPreemptively()将另起一个新的线程执行任务。因此如果使用`java.lang.ThreadLocal`存储可能会有副作用。
 
-## 4.Assumptions（假设）
+## 4. Assumptions（假设）
 
 Assumptions方法中可以使用lambda表达式和方法引用。
 
@@ -293,14 +293,117 @@ class AssumptionsDemo {
 }
 ```
 
-## 5.Disabling Tests（禁用测试）
+## 5. Disabling Tests（禁用测试）
 
 在测试类上使用@Disabled注解可以禁用整个测试类。
 
 在测试方法上使用@Disabled注解可以禁用单独的一个测试方法。
 
-## 6.Conditional Test Execution（基于条件执行测试）
+## 6. Conditional Test Execution（基于条件执行测试）
 
-`org.junit.jupiter.api.condition`包提供了基于注释的条件使开发人员可以以编程的方式基于特定条件启用或禁用测试。当使用了多个条件时，一旦其中的一个条件返回disabled，则这个测试将会被禁用。
+`org.junit.jupiter.api.condition`包提供了基于注解的条件使开发人员可以以编程的方式基于特定条件启用或禁用测试。当使用了多个条件时，一旦其中的一个条件返回disabled，则这个测试将会被禁用。
+
+### 6.1 Operating System Conditions（操作系统条件）
+
+可以通过 @EnabledOnOs 和 @DisabledOnOs 注解在特定操作系统上启用或禁用测试。
+
+### 6.2 Java Runtime Environment Conditions
+
+可以通过 @EnabledOnJre 和 @DisabledOnJre 注解在特定版本的 Java 运行时环境 (JRE) 上启用或禁用测试，或者通过 @EnabledForJreRange 和 @DisabledForJreRange 注解在特定范围的 JRE 版本上启用或禁用测试。
+
+### 6.3 System Property Conditions
+
+可以通过`@EnabledIfSystemProperty`和`@DisabledIfSystemProperty`注解根据 JVM 系统属性的值启用或禁用测试。通过matches属性提供的值将被解释为正则表达式。
+
+```java
+@Test
+@EnabledIfSystemProperty(named = "os.arch", matches = ".*64.*")
+void onlyOn64BitArchitectures() {
+    // ...
+}
+
+@Test
+@DisabledIfSystemProperty(named = "ci-server", matches = "true")
+void notOnCiServer() {
+    // ...
+}
+```
+
+### 6.4 Environment Variable Conditions
+
+可以通过`@EnabledIfEnvironmentVariable`和`@DisabledIfEnvironmentVariable`注解基于来自底层操作系统的命名环境变量的值启用或禁用测试。通过matches属性提供的值将被解释为正则表达式。
+
+```java
+@Test
+@EnabledIfEnvironmentVariable(named = "ENV", matches = "staging-server")
+void onlyOnStagingServer() {
+    // ...
+}
+
+@Test
+@DisabledIfEnvironmentVariable(named = "ENV", matches = ".*development.*")
+void notOnDeveloperWorkstation() {
+    // ...
+}
+```
+
+### 6.5 Custom Conditions
+
+可以基于通过`@EnabledIf`和`@DisabledIf`注解的方法的布尔返回值来启用或禁用测试。该方法通过其名称提供给注解。
+
+```java
+@Test
+@EnabledIf("customCondition")
+void enabled() {
+    // ...
+}
+
+@Test
+@DisabledIf("customCondition")
+void disabled() {
+    // ...
+}
+
+boolean customCondition() {
+    return true;
+}
+```
+
+条件方法可以位于测试类之外。在这种情况下，必须通过其完全限定名来引用它。
+
+```java
+package example;
+
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIf;
+
+class ExternalCustomConditionDemo {
+
+    @Test
+    @EnabledIf("example.ExternalCondition#customCondition")
+    void enabled() {
+        // ...
+    }
+}
+
+class ExternalCondition {
+
+    static boolean customCondition() {
+        return true;
+    }
+}
+```
+
+**在条件方法在测试类外时，条件方法必须是静态的。**
+
+## 7. Tagging and Filtering（标记和过滤）
+
+测试类和方法可以通过@Tag注解进行标记。这些标记稍后可以用于过滤。
+
+## 8. Test Execution Order（测试执行顺序）
+
+默认情况下，测试类和测试方法将使用确定性但故意不明显的算法进行排序。
+
+### 8.1 Method Order
 
 
