@@ -503,6 +503,18 @@ class OrderedNestedTestClassesDemo {
 junit.jupiter.testclass.order.default = org.junit.jupiter.api.ClassOrderer$OrderAnnotation
 ```
 
-## 9. Test Instance Lifecycle
+## 9. Test Instance Lifecycle（测试实例生命周期)
+
+- 在测试类上使用@TestInstance(Lifecycle.PER_METHOD)注解，Junit在执行每个测试方法时都将创建一个新的实例。这是Junit的默认行为。
+
+- 在测试类上使用@TestInstance(Lifecycle.PER_CLASS)注解，Junit在同一个实例中执行所有的测试方法。使用此模式可以在非静态方法以及接口默认方法上声明@BeforeAll和@AfterAll。因此还可以在@Nested注解的测试类中使用@BeforeAll和@AfterAll。
+
+### 9.1 更改默认的测试实例生命周期
+
+```properties
+junit.jupiter.testinstance.lifecycle.default = per_class
+```
+
+## 10. Nested Tests（嵌套测试）
 
 
