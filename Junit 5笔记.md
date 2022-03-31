@@ -402,8 +402,107 @@ class ExternalCondition {
 
 ## 8. Test Execution Order（测试执行顺序）
 
-默认情况下，测试类和测试方法将使用确定性但故意不明显的算法进行排序。
+默认情况下，测试类和测试方法将使用确定性但故意不明显的算法进行排序。也就是多次执行时的顺序一致但是以什么样的顺序执行是没有规律的。
 
-### 8.1 Method Order
+### 8.1 Method Order（测试方法的执行顺序）
+
+要控制测试方法的执行顺序，可以使用@TestMethodOrder注解测试类或测试接口，并指定所需的MethodOrderer实现。
+
+| Method Orderer                | 排序规则                                    |
+| ----------------------------- | --------------------------------------- |
+| MethodOrderer.DisplayName     | 根据显示名称按字母数字对测试方法排序                      |
+| MethodOrderer.Methodname      | 根据名称和形参列表按字母数字对测试方法进行排序。**不推荐使用，以后将删除** |
+| MethodOrderer.OrderAnnotation | 根据通过@Order注解指定的值对测试方法进行数字排序             |
+| MethodOrderer.Random          | 对测试方法进行伪随机排序并支持自定义种子的配置                 |
+| MethodOrderer.Alphanumeric    | 根据名称和形式参数列表按字母数字对测试方法进行排序。              |
+
+以下示例展示了如何保证测试方法按照@Order注解指定的顺序执行：
+
+```java
+import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
+import org.junit.jupiter.api.Order;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestMethodOrder;
+
+@TestMethodOrder(OrderAnnotation.class)
+class OrderedTestsDemo {
+
+    @Test
+    @Order(1)
+    void nullValues() {
+        // perform assertions against null values
+    }
+
+    @Test
+    @Order(2)
+    void emptyValues() {
+        // perform assertions against empty values
+    }
+
+    @Test
+    @Order(3)
+    void validValues() {
+        // perform assertions against valid values
+    }
+
+}
+```
+
+### 8.2 设置默认的测试方法执行顺序
+
+```properties
+junit.jupiter.testmethod.order.default = org.junit.jupiter.api.MethodOrderer$OrderAnnotation
+```
+
+### 8.3 Class Order（测试类的执行顺序）
+
+要控制测试类的执行顺序，可以使用@TestClassOrder注解测试类，并指定所需的ClassOrderer实现。
+
+| Class Order                  | 排序规则                       |
+| ---------------------------- | -------------------------- |
+| ClassOrderer.ClassName       | 根据完全限定的类名按字母数字对测试类进行排序     |
+| ClassOrderer.DisplayName     | 根据显示名称按字母数字对测试类进行排序        |
+| ClassOrderer.OrderAnnotation | 根据通过@Order注解指定的值对测试类进行数字排序 |
+| ClassOrderer.Random          | 对测试类进行伪随机排序并支持自定义种子的配置     |
+
+以下示例展示了如何保证测试类按照@Order注解指定的顺序执行：
+
+```java
+import org.junit.jupiter.api.ClassOrderer;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Order;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestClassOrder;
+
+@TestClassOrder(ClassOrderer.OrderAnnotation.class)
+class OrderedNestedTestClassesDemo {
+
+    @Nested
+    @Order(1)
+    class PrimaryTests {
+
+        @Test
+        void test1() {
+        }
+    }
+
+    @Nested
+    @Order(2)
+    class SecondaryTests {
+
+        @Test
+        void test2() {
+        }
+    }
+}
+```
+
+### 8.4 设置默认的测试类执行顺序
+
+```properties
+junit.jupiter.testclass.order.default = org.junit.jupiter.api.ClassOrderer$OrderAnnotation
+```
+
+## 9. Test Instance Lifecycle
 
 
