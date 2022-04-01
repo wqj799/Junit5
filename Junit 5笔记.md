@@ -899,4 +899,255 @@ void testWithCsvFileSourceAndHeaders(String country, int reference) {
 
 #### 13.1.6 @ArgumentsSource
 
+用于指定自定义的、可重用的ArgumentsProvider。必须将ArgumentsProvider的实现声明为顶级类或静态嵌套类。
+
+```java
+@ParameterizedTest
+@ArgumentsSource(MyArgumentsProvider.class)
+void testWithArgumentsSource(String argument) {
+    assertNotNull(argument);
+}
+```
+
+```java
+public class MyArgumentsProvider implements ArgumentsProvider {
+
+    @Override
+    public Stream<? extends Arguments> provideArguments(ExtensionContext context) {
+        return Stream.of("apple", "banana").map(Arguments::of);
+    }
+}
+```
+
+### 13.2 Argument Conversion（参数转换）
+
+Junit提供了内置的隐式转换器。
+
+| Target Type                | Example                                                                                                           |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `boolean`/`Boolean`        | `"true"` → `true`                                                                                                 |
+| `byte`/`Byte`              | `"15"`, `"0xF"`, or `"017"` → `(byte) 15`                                                                         |
+| `char`/`Character`         | `"o"` → `'o'`                                                                                                     |
+| `short`/`Short`            | `"15"`, `"0xF"`, or `"017"` → `(short) 15`                                                                        |
+| `int`/`Integer`            | `"15"`, `"0xF"`, or `"017"` → `15`                                                                                |
+| `long`/`Long`              | `"15"`, `"0xF"`, or `"017"` → `15L`                                                                               |
+| `float`/`Float`            | `"1.0"` → `1.0f`                                                                                                  |
+| `double`/`Double`          | `"1.0"` → `1.0d`                                                                                                  |
+| `Enum` subclass            | `"SECONDS"` → `TimeUnit.SECONDS`                                                                                  |
+| `java.io.File`             | `"/path/to/file"` → `new File("/path/to/file")`                                                                   |
+| `java.lang.Class`          | `"java.lang.Integer"` → `java.lang.Integer.class` *(use `$` for nested classes, e.g. `"java.lang.Thread$State"`)* |
+| `java.lang.Class`          | `"byte"` → `byte.class` *(primitive types are supported)*                                                         |
+| `java.lang.Class`          | `"char[]"` → `char[].class` *(array types are supported)*                                                         |
+| `java.math.BigDecimal`     | `"123.456e789"` → `new BigDecimal("123.456e789")`                                                                 |
+| `java.math.BigInteger`     | `"1234567890123456789"` → `new BigInteger("1234567890123456789")`                                                 |
+| `java.net.URI`             | `"https://junit.org/"` → `URI.create("https://junit.org/")`                                                       |
+| `java.net.URL`             | `"https://junit.org/"` → `new URL("https://junit.org/")`                                                          |
+| `java.nio.charset.Charset` | `"UTF-8"` → `Charset.forName("UTF-8")`                                                                            |
+| `java.nio.file.Path`       | `"/path/to/file"` → `Paths.get("/path/to/file")`                                                                  |
+| `java.time.Duration`       | `"PT3S"` → `Duration.ofSeconds(3)`                                                                                |
+| `java.time.Instant`        | `"1970-01-01T00:00:00Z"` → `Instant.ofEpochMilli(0)`                                                              |
+| `java.time.LocalDateTime`  | `"2017-03-14T12:34:56.789"` → `LocalDateTime.of(2017, 3, 14, 12, 34, 56, 789_000_000)`                            |
+| `java.time.LocalDate`      | `"2017-03-14"` → `LocalDate.of(2017, 3, 14)`                                                                      |
+| `java.time.LocalTime`      | `"12:34:56.789"` → `LocalTime.of(12, 34, 56, 789_000_000)`                                                        |
+| `java.time.MonthDay`       | `"--03-14"` → `MonthDay.of(3, 14)`                                                                                |
+| `java.time.OffsetDateTime` | `"2017-03-14T12:34:56.789Z"` → `OffsetDateTime.of(2017, 3, 14, 12, 34, 56, 789_000_000, ZoneOffset.UTC)`          |
+| `java.time.OffsetTime`     | `"12:34:56.789Z"` → `OffsetTime.of(12, 34, 56, 789_000_000, ZoneOffset.UTC)`                                      |
+| `java.time.Period`         | `"P2M6D"` → `Period.of(0, 2, 6)`                                                                                  |
+| `java.time.YearMonth`      | `"2017-03"` → `YearMonth.of(2017, 3)`                                                                             |
+| `java.time.Year`           | `"2017"` → `Year.of(2017)`                                                                                        |
+| `java.time.ZonedDateTime`  | `"2017-03-14T12:34:56.789Z"` → `ZonedDateTime.of(2017, 3, 14, 12, 34, 56, 789_000_000, ZoneOffset.UTC)`           |
+| `java.time.ZoneId`         | `"Europe/Berlin"` → `ZoneId.of("Europe/Berlin")`                                                                  |
+| `java.time.ZoneOffset`     | `"+02:30"` → `ZoneOffset.ofHoursMinutes(2, 30)`                                                                   |
+| `java.util.Currency`       | `"JPY"` → `Currency.getInstance("JPY")`                                                                           |
+| `java.util.Locale`         | `"en"` → `new Locale("en")`                                                                                       |
+| `java.util.UUID`           | `"d043e930-7b3b-48e3-bdbe-5a3ccfb833db"` → `UUID.fromString("d043e930-7b3b-48e3-bdbe-5a3ccfb833db")`              |
+
+字符串到对象的转换
+
+- 工厂方法：在目标类型中声明非静态私有方法，它接受单个 String 参数并返回目标类型的实例。 方法的名称可以是任意的，不需要遵循任何特定的约定。
+
+- 工厂构造函数：目标类型中接受单个字符串参数的非私有构造函数。 请注意，目标类型必须声明为顶级类或静态嵌套类。
+
+```java
+@ParameterizedTest
+@ValueSource(strings = "42 Cats")
+void testWithImplicitFallbackArgumentConversion(Book book) {
+    assertEquals("42 Cats", book.getTitle());
+}
+```
+
+```java
+public class Book {
+
+    private final String title;
+
+    private Book(String title) {
+        this.title = title;
+    }
+
+    public static Book fromTitle(String title) {
+        return new Book(title);
+    }
+
+    public String getTitle() {
+        return this.title;
+    }
+}
+```
+
+显示转换
+
+使用@ConvertWith注释显式指定 ArgumentConverter 用于某个参数，而不是依赖于隐式参数转换。 请注意，必须将ArgumentConverter的实现声明为顶级类或静态嵌套类。
+
+```java
+@ParameterizedTest
+@EnumSource(ChronoUnit.class)
+void testWithExplicitArgumentConversion(
+        @ConvertWith(ToStringArgumentConverter.class) String argument) {
+
+    assertNotNull(ChronoUnit.valueOf(argument));
+}
+```
+
+```java
+public class ToStringArgumentConverter extends SimpleArgumentConverter {
+
+    @Override
+    protected Object convert(Object source, Class<?> targetType) {
+        assertEquals(String.class, targetType, "Can only convert to String");
+        if (source instanceof Enum<?>) {
+            return ((Enum<?>) source).name();
+        }
+        return String.valueOf(source);
+    }
+}
+```
+
+如果转换器仅用于将一种类型转换为另一种类型，则可以扩展TypedArgumentConverter。
+
+```java
+public class ToLengthArgumentConverter extends TypedArgumentConverter<String, Integer> {
+
+    protected ToLengthArgumentConverter() {
+        super(String.class, Integer.class);
+    }
+
+    @Override
+    protected Integer convert(String source) {
+        return (source != null ? source.length() : 0);
+    }
+}
+```
+
+### 13.3 Argument Aggregation（参数聚合）
+
+默认情况下，提供给 @ParameterizedTest 方法的每个参数都对应一个方法参数。 因此，预期会提供大量参数的参数源可能会导致较大的方法签名。
+
+在这种情况下，可以使用 ArgumentsAccessor 代替多个参数。
+
+```java
+@ParameterizedTest
+@CsvSource({
+    "Jane, Doe, F, 1990-05-20",
+    "John, Doe, M, 1990-10-22"
+})
+void testWithArgumentsAccessor(ArgumentsAccessor arguments) {
+    Person person = new Person(arguments.getString(0),
+                               arguments.getString(1),
+                               arguments.get(2, Gender.class),
+                               arguments.get(3, LocalDate.class));
+
+    if (person.getFirstName().equals("Jane")) {
+        assertEquals(Gender.F, person.getGender());
+    }
+    else {
+        assertEquals(Gender.M, person.getGender());
+    }
+    assertEquals("Doe", person.getLastName());
+    assertEquals(1990, person.getDateOfBirth().getYear());
+}
+```
+
+#### 13.3.1 Custom Aggregators
+
+除了使用ArgumentsAccessor直接访问 @ParameterizedTest 方法的参数外，还支持使用自定义的、可重用的聚合器。
+
+要使用自定义聚合器，需实现ArgumentsAggregato 接口并在@ParameterizedTest注解的方法中使用@AggregateWith注解参数。
+
+```java
+@ParameterizedTest
+@CsvSource({
+    "Jane, Doe, F, 1990-05-20",
+    "John, Doe, M, 1990-10-22"
+})
+void testWithArgumentsAggregator(@AggregateWith(PersonAggregator.class) Person person) {
+    // perform assertions against person
+}
+```
+
+```java
+public class PersonAggregator implements ArgumentsAggregator {
+    @Override
+    public Person aggregateArguments(ArgumentsAccessor arguments, ParameterContext context) {
+        return new Person(arguments.getString(0),
+                          arguments.getString(1),
+                          arguments.get(2, Gender.class),
+                          arguments.get(3, LocalDate.class));
+    }
+}
+```
+
+可以使用自定义组合注解避免反复申明@AggregateWith(PersonAggregator.class)。
+
+```java
+@ParameterizedTest
+@CsvSource({
+    "Jane, Doe, F, 1990-05-20",
+    "John, Doe, M, 1990-10-22"
+})
+void testWithCustomAggregatorAnnotation(@CsvToPerson Person person) {
+    // perform assertions against person
+}
+```
+
+```java
+@Retention(RetentionPolicy.RUNTIME)
+@Target(ElementType.PARAMETER)
+@AggregateWith(PersonAggregator.class)
+public @interface CsvToPerson {
+}
+```
+
+### 13.4 Customizing Dispaly Name（自定义显示名称）
+
+```java
+@DisplayName("Display name of container")
+@ParameterizedTest(name = "{index} ==> the rank of ''{0}'' is {1}")
+@CsvSource({ "apple, 1", "banana, 2", "'lemon, lime', 3" })
+void testWithCustomDisplayNames(String fruit, int rank) {
+}
+```
+
+| Placeholder            | Description                                                       |
+| ---------------------- | ----------------------------------------------------------------- |
+| `{displayName}`        | the display name of the method                                    |
+| `{index}`              | the current invocation index (1-based)                            |
+| `{arguments}`          | the complete, comma-separated arguments list                      |
+| `{argumentsWithNames}` | the complete, comma-separated arguments list with parameter names |
+| `{0}`, `{1}`, …​       | an individual argument                                            |
+
+设置默认的显示名称
+
+```properties
+junit.jupiter.params.displayname.default = {index}
+```
+
+参数化方法的显示名称根据以下优先规则确定：
+
+1.  @ParameterizedTest 的名称
+
+2. junit.jupiter.params.displayname.default 的值
+
+3. @ParameterizedTest 中定义的 DEFAULT_DISPLAY_NAME 常量
+
 
