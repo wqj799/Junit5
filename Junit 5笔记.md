@@ -33,9 +33,6 @@ Junit 5运行时需要Java 8（或更高）版本。但是编译时可以使用�
 使用此注解可以在测试报告和IDE中给测试类和测试方法自定义显示名称。该显示名称可以使用空白，特殊字符，甚至是emoji等。
 
 ```java
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-
 @DisplayName("A special test case")
 class DisplayNameDemo {
 
@@ -71,15 +68,6 @@ class DisplayNameDemo {
 以下是例子：
 
 ```java
-package displayname;
-
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.DisplayNameGeneration;
-import org.junit.jupiter.api.DisplayNameGenerator;
-import org.junit.jupiter.api.IndicativeSentencesGeneration;
-import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.Test;
-
 public class DisplayNameGeneratorDemo {
 
     @Nested
@@ -154,23 +142,6 @@ junit.jupiter.displayname.generator.default = org.junit.jupiter.api.DisplayNameG
 **在Junit 5中所有的断言都是org.junit.jupiter.api.Assertions包中的静态方法。**
 
 ```java
-import static java.time.Duration.ofMillis;
-import static java.time.Duration.ofMinutes;
-import static org.junit.jupiter.api.Assertions.assertAll;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTimeout;
-import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
-import java.util.concurrent.CountDownLatch;
-
-import example.domain.Person;
-import example.util.Calculator;
-
-import org.junit.jupiter.api.Test;
-
 class AssertionsDemo {
 
     private final Calculator calculator = new Calculator();
@@ -267,14 +238,6 @@ Assumptions方法中可以使用lambda表达式和方法引用。
 **在Junit 5中所有的假设方法都是org.junit.jupiter.api.Assumptions包中的静态方法。**
 
 ```java
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assumptions.assumeTrue;
-import static org.junit.jupiter.api.Assumptions.assumingThat;
-
-import example.util.Calculator;
-
-import org.junit.jupiter.api.Test;
-
 class AssumptionsDemo {
 
     private final Calculator calculator = new Calculator();
@@ -372,11 +335,6 @@ boolean customCondition() {
 条件方法可以位于测试类之外。在这种情况下，必须通过其完全限定名来引用它。
 
 ```java
-package example;
-
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIf;
-
 class ExternalCustomConditionDemo {
 
     @Test
@@ -419,11 +377,6 @@ class ExternalCondition {
 以下示例展示了如何保证测试方法按照@Order注解指定的顺序执行：
 
 ```java
-import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
-import org.junit.jupiter.api.Order;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestMethodOrder;
-
 @TestMethodOrder(OrderAnnotation.class)
 class OrderedTestsDemo {
 
@@ -468,12 +421,6 @@ junit.jupiter.testmethod.order.default = org.junit.jupiter.api.MethodOrderer$Ord
 以下示例展示了如何保证测试类按照@Order注解指定的顺序执行：
 
 ```java
-import org.junit.jupiter.api.ClassOrderer;
-import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.Order;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestClassOrder;
-
 @TestClassOrder(ClassOrderer.OrderAnnotation.class)
 class OrderedNestedTestClassesDemo {
 
@@ -516,5 +463,440 @@ junit.jupiter.testinstance.lifecycle.default = per_class
 ```
 
 ## 10. Nested Tests（嵌套测试）
+
+利用嵌套测试可以表达几组测试之间的关系。如下实例所示：
+
+```java
+@DisplayName("A stack")
+class TestingAStackDemo {
+
+    Stack<Object> stack;
+
+    @Test
+    @DisplayName("is instantiated with new Stack()")
+    void isInstantiatedWithNew() {
+        new Stack<>();
+    }
+
+    @Nested
+    @DisplayName("when new")
+    class WhenNew {
+
+        @BeforeEach
+        void createNewStack() {
+            stack = new Stack<>();
+        }
+
+        @Test
+        @DisplayName("is empty")
+        void isEmpty() {
+            assertTrue(stack.isEmpty());
+        }
+
+        @Test
+        @DisplayName("throws EmptyStackException when popped")
+        void throwsExceptionWhenPopped() {
+            assertThrows(EmptyStackException.class, stack::pop);
+        }
+
+        @Test
+        @DisplayName("throws EmptyStackException when peeked")
+        void throwsExceptionWhenPeeked() {
+            assertThrows(EmptyStackException.class, stack::peek);
+        }
+
+        @Nested
+        @DisplayName("after pushing an element")
+        class AfterPushing {
+
+            String anElement = "an element";
+
+            @BeforeEach
+            void pushAnElement() {
+                stack.push(anElement);
+            }
+
+            @Test
+            @DisplayName("it is no longer empty")
+            void isNotEmpty() {
+                assertFalse(stack.isEmpty());
+            }
+
+            @Test
+            @DisplayName("returns the element when popped and is empty")
+            void returnElementWhenPopped() {
+                assertEquals(anElement, stack.pop());
+                assertTrue(stack.isEmpty());
+            }
+
+            @Test
+            @DisplayName("returns the element when peeked but remains not empty")
+            void returnElementWhenPeeked() {
+                assertEquals(anElement, stack.peek());
+                assertFalse(stack.isEmpty());
+            }
+        }
+    }
+}
+```
+
+**只有非静态测试类（即内部类）可以用作@Nested测试类。嵌套类支持完整的生命周期，但是@BeforeAll和@AfterAll注解默认不起作用，原因是Java不允许内部类中的静态成员，而这两个注解必须是静态方法。。**
+
+## 11. Dependency Injection for Constructors and Methods（构造函数和方法的依赖注入）
+
+Junit 5允许测试构造函数和方法具有参数。参数的类型需要能被`ParameterResolver`解析器解析。
+
+Junit 5支持以下三种解析器：
+
+1. TestInfoParameterResolver：如果构造函数或方法的参数是TestInfo类型,则TestInfoParameterResolver解析器将提供TestInfo实例。TestInfo可以获取当前测试的信息，如DisplayName，Tags等。
+   
+   ```java
+   @DisplayName("TestInfo Demo")
+   class TestInfoDemo {
+   
+       TestInfoDemo(TestInfo testInfo) {
+           assertEquals("TestInfo Demo", testInfo.getDisplayName());
+       }
+   
+       @BeforeEach
+       void init(TestInfo testInfo) {
+           String displayName = testInfo.getDisplayName();
+           assertTrue(displayName.equals("TEST 1") || displayName.equals("test2()"));
+       }
+   
+       @Test
+       @DisplayName("TEST 1")
+       @Tag("my-tag")
+       void test1(TestInfo testInfo) {
+           assertEquals("TEST 1", testInfo.getDisplayName());
+           assertTrue(testInfo.getTags().contains("my-tag"));
+       }
+   
+       @Test
+       void test2() {
+       }
+   
+   }
+   ```
+
+2. RepetitionInfoParameterResolver：如果@RepeatedTest、@BeforeEach 或@AfterEach 方法中的方法参数是RepetitionInfo类型，则RepetitionInfoParameterResolver将提供RepetitionInfo的实例。RepetitionInfo用于获取当前测试的重复信息和重复总数。
+
+3. TestReporterParameterResolver：如果构造函数或方法参数的类型为 TestReporter，则TestReporterParameterResolver将提供TestReporter的实例。TestReporter用于获取当前测试运行的附加数据。
+   
+   ```java
+   class TestReporterDemo {
+   
+       @Test
+       void reportSingleValue(TestReporter testReporter) {
+           testReporter.publishEntry("a status message");
+       }
+   
+       @Test
+       void reportKeyValuePair(TestReporter testReporter) {
+           testReporter.publishEntry("a key", "a value");
+       }
+   
+       @Test
+       void reportMultipleKeyValuePairs(TestReporter testReporter) {
+           Map<String, String> values = new HashMap<>();
+           values.put("user name", "dk38");
+           values.put("award year", "1974");
+   
+           testReporter.publishEntry(values);
+       }
+   
+   }
+   ```
+
+## 12. Repeated Tests（重复测试）
+
+使用@RepeatedTest注解并指定所需的重复总数，提供了将测试重复指定次数的能力。
+
+可以通过@RepeatedTest注解的name属性为每个重复配置自定义显示名称。name属性支持以下占位符：
+
+- {displayName}：@RepeatedTest 方法的显示名称
+
+- {currentRepetition}：当前重复次数
+
+- {totalRepetitions}：总重复次数
+
+下面是一些例子：
+
+```java
+class RepeatedTestsDemo {
+
+    private Logger logger = // ...
+
+    @BeforeEach
+    void beforeEach(TestInfo testInfo, RepetitionInfo repetitionInfo) {
+        int currentRepetition = repetitionInfo.getCurrentRepetition();
+        int totalRepetitions = repetitionInfo.getTotalRepetitions();
+        String methodName = testInfo.getTestMethod().get().getName();
+        logger.info(String.format("About to execute repetition %d of %d for %s", //
+            currentRepetition, totalRepetitions, methodName));
+    }
+
+    @RepeatedTest(10)
+    void repeatedTest() {
+        // ...
+    }
+
+    @RepeatedTest(5)
+    void repeatedTestWithRepetitionInfo(RepetitionInfo repetitionInfo) {
+        assertEquals(5, repetitionInfo.getTotalRepetitions());
+    }
+
+    @RepeatedTest(value = 1, name = "{displayName} {currentRepetition}/{totalRepetitions}")
+    @DisplayName("Repeat!")
+    void customDisplayName(TestInfo testInfo) {
+        assertEquals("Repeat! 1/1", testInfo.getDisplayName());
+    }
+
+    @RepeatedTest(value = 1, name = RepeatedTest.LONG_DISPLAY_NAME)
+    @DisplayName("Details...")
+    void customDisplayNameWithLongPattern(TestInfo testInfo) {
+        assertEquals("Details... :: repetition 1 of 1", testInfo.getDisplayName());
+    }
+
+    @RepeatedTest(value = 5, name = "Wiederholung {currentRepetition} von {totalRepetitions}")
+    void repeatedTestInGerman() {
+        // ...
+    }
+
+}
+```
+
+## 13. Parameterized Tests（参数化测试）
+
+使用不同的参数多次运行测试。需要使用@ParameterizedTest注解，并声明一个数据源。
+
+**启用参数化测试需要添加依赖：junit-jupiter-params**
+
+### 13.1 Sources of Arguments（参数来源）
+
+#### 13.1.1 @ValueSource
+
+指定一个数组作为数据源。支持的类型如下：short，byte，int，long，float，double，char，boolean，java.lang.String，java.lang.Class。
+
+```java
+@ParameterizedTest
+@ValueSource(ints = { 1, 2, 3 })
+void testWithValueSource(int argument) {
+    assertTrue(argument > 0 && argument < 4);
+}
+```
+
+需要传入null值时，使用@NullSource注解
+
+需要传入empty值时，使用@EmptySource注解
+
+两者都需要时，使用@NullAndEmptySource注解
+
+```java
+@ParameterizedTest
+@NullSource
+@EmptySource
+@ValueSource(strings = { " ", "   ", "\t", "\n" })
+void nullEmptyAndBlankStrings(String text) {
+    assertTrue(text == null || text.trim().isEmpty());
+}
+
+@ParameterizedTest
+@NullAndEmptySource
+@ValueSource(strings = { " ", "   ", "\t", "\n" })
+void nullEmptyAndBlankStrings(String text) {
+    assertTrue(text == null || text.trim().isEmpty());
+}
+```
+
+#### 13.1.2 @EnumSource
+
+使用枚举常量作为数据源。
+
+```java
+@ParameterizedTest
+@EnumSource(ChronoUnit.class)
+void testWithEnumSource(TemporalUnit unit) {
+    assertNotNull(unit);
+}
+```
+
+该注解的value属性可以省略，如果省略，则使用方法的第一个参数作为枚举类
+
+```java
+@ParameterizedTest
+@EnumSource
+void testWithEnumSourceWithAutoDetection(ChronoUnit unit) {
+    assertNotNull(unit);
+}
+```
+
+该注解的name属性可以指定使用枚举中的哪些常量，如果省略则使用全部的常量。
+
+```java
+@ParameterizedTest
+@EnumSource(names = { "DAYS", "HOURS" })
+void testWithEnumSourceInclude(ChronoUnit unit) {
+    assertTrue(EnumSet.of(ChronoUnit.DAYS, ChronoUnit.HOURS).contains(unit));
+}
+```
+
+该注解的mode属性可以对常量进行细粒度的控制。
+
+```java
+@ParameterizedTest
+@EnumSource(mode = EXCLUDE, names = { "ERAS", "FOREVER" })
+void testWithEnumSourceExclude(ChronoUnit unit) {
+    assertFalse(EnumSet.of(ChronoUnit.ERAS, ChronoUnit.FOREVER).contains(unit));
+}
+
+@ParameterizedTest
+@EnumSource(mode = MATCH_ALL, names = "^.*DAYS$")
+void testWithEnumSourceRegex(ChronoUnit unit) {
+    assertTrue(unit.name().endsWith("DAYS"));
+}
+```
+
+#### 13.1.3 @MethodSource
+
+可以引用测试类或外部类的一个或多个工厂方法。
+
+- 测试类中的工厂方法必须是静态的，除非测试类使用@TestInstance(Lifecycle.PER_CLASS)注解。
+
+- 外部类中的工厂方法必须始终是静态的。
+
+- 这两类工厂方法不得接受任何参数。
+
+- 每个工厂方法都必须返回一个参数流（即Stream<Arguments>）
+
+```java
+@ParameterizedTest
+@MethodSource("stringProvider")
+void testWithExplicitLocalMethodSource(String argument) {
+    assertNotNull(argument);
+}
+
+static Stream<String> stringProvider() {
+    return Stream.of("apple", "banana");
+}
+```
+
+如果@MethodSource没有显式提供工厂方法名称，则将按照约定搜索与当前@ParameterizedTest 方法同名的工厂方法。
+
+```java
+@ParameterizedTest
+@MethodSource
+void testWithDefaultLocalMethodSource(String argument) {
+    assertNotNull(argument);
+}
+
+static Stream<String> testWithDefaultLocalMethodSource() {
+    return Stream.of("apple", "banana");
+}
+```
+
+如果测试方法需要提供多个参数，那么工厂方法需要返回collection，stream，或Arguments实例数组或Object数组。
+
+```java
+@ParameterizedTest
+@MethodSource("stringIntAndListProvider")
+void testWithMultiArgMethodSource(String str, int num, List<String> list) {
+    assertEquals(5, str.length());
+    assertTrue(num >=1 && num <=2);
+    assertEquals(2, list.size());
+}
+
+static Stream<Arguments> stringIntAndListProvider() {
+    return Stream.of(
+        arguments("apple", 1, Arrays.asList("a", "b")),
+        arguments("lemon", 2, Arrays.asList("x", "y"))
+    );
+}
+```
+
+引用外部静态工厂方法需要提供其完全限定方法名。
+
+```java
+package example;
+
+import java.util.stream.Stream;
+
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
+
+class ExternalMethodSourceDemo {
+
+    @ParameterizedTest
+    @MethodSource("example.StringsProviders#tinyStrings")
+    void testWithExternalMethodSource(String tinyString) {
+        // test with tiny string
+    }
+}
+
+class StringsProviders {
+
+    static Stream<String> tinyStrings() {
+        return Stream.of(".", "oo", "OOO");
+    }
+}
+```
+
+#### 13.1.4 @CsvSource
+
+使用CSV格式的数据作为数据源。
+
+```java
+@ParameterizedTest
+@CsvSource({
+    "apple,         1",
+    "banana,        2",
+    "'lemon, lime', 0xF1",
+    "strawberry,    700_000"
+})
+void testWithCsvSource(String fruit, int rank) {
+    assertNotNull(fruit);
+    assertNotEquals(0, rank);
+}
+```
+
+默认使用逗号作为分隔符，单引号作为引号字符。
+
+| Example Input                                                                           | Resulting Argument List       |
+|:--------------------------------------------------------------------------------------- | ----------------------------- |
+| `@CsvSource({ "apple, banana" })`                                                       | `"apple"`, `"banana"`         |
+| `@CsvSource({ "apple, 'lemon, lime'" })`                                                | `"apple"`, `"lemon, lime"`    |
+| `@CsvSource({ "apple, ''" })`                                                           | `"apple"`, `""`               |
+| `@CsvSource({ "apple, " })`                                                             | `"apple"`, `null`             |
+| `@CsvSource(value = { "apple, banana, NIL" }, nullValues = "NIL")`                      | `"apple"`, `"banana"`, `null` |
+| `@CsvSource(value = { " apple , banana" }, ignoreLeadingAndTrailingWhitespace = false)` | `" apple "`, `" banana"`      |
+
+#### 13.1.5 @CsvFileSource
+
+使用来自类路径或本地文件系统的CSV文件作为数据源。
+
+```java
+@ParameterizedTest
+@CsvFileSource(resources = "/two-column.csv", numLinesToSkip = 1)
+void testWithCsvFileSourceFromClasspath(String country, int reference) {
+    assertNotNull(country);
+    assertNotEquals(0, reference);
+}
+
+@ParameterizedTest
+@CsvFileSource(files = "src/test/resources/two-column.csv", numLinesToSkip = 1)
+void testWithCsvFileSourceFromFile(String country, int reference) {
+    assertNotNull(country);
+    assertNotEquals(0, reference);
+}
+
+@ParameterizedTest(name = "[{index}] {arguments}")
+@CsvFileSource(resources = "/two-column.csv", useHeadersInDisplayName = true)
+void testWithCsvFileSourceAndHeaders(String country, int reference) {
+    assertNotNull(country);
+    assertNotEquals(0, reference);
+}
+```
+
+#### 13.1.6 @ArgumentsSource
 
 
