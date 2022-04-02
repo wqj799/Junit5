@@ -1144,10 +1144,181 @@ junit.jupiter.params.displayname.default = {index}
 
 参数化方法的显示名称根据以下优先规则确定：
 
-1.  @ParameterizedTest 的名称
+1. @ParameterizedTest 的名称
 
 2. junit.jupiter.params.displayname.default 的值
 
 3. @ParameterizedTest 中定义的 DEFAULT_DISPLAY_NAME 常量
 
+### 13.5 Dynamic Tests（动态测试）
 
+静态测试用例在编译时完全指定，它们的行为不能在运行时发生改变。动态测试在运行时由带有@TestFactory注解的工厂方法生成。
+
+**与@Test方法相比，@TestFactory方法本身不是测试用例，而是测试用例的工厂。**
+
+```java
+class DynamicTestsDemo {
+
+    private final Calculator calculator = new Calculator();
+
+    // This will result in a JUnitException!
+    @TestFactory
+    List<String> dynamicTestsWithInvalidReturnType() {
+        return Arrays.asList("Hello");
+    }
+
+    @TestFactory
+    Collection<DynamicTest> dynamicTestsFromCollection() {
+        return Arrays.asList(
+            dynamicTest("1st dynamic test", () -> assertTrue(isPalindrome("madam"))),
+            dynamicTest("2nd dynamic test", () -> assertEquals(4, calculator.multiply(2, 2)))
+        );
+    }
+
+    @TestFactory
+    Iterable<DynamicTest> dynamicTestsFromIterable() {
+        return Arrays.asList(
+            dynamicTest("3rd dynamic test", () -> assertTrue(isPalindrome("madam"))),
+            dynamicTest("4th dynamic test", () -> assertEquals(4, calculator.multiply(2, 2)))
+        );
+    }
+
+    @TestFactory
+    Iterator<DynamicTest> dynamicTestsFromIterator() {
+        return Arrays.asList(
+            dynamicTest("5th dynamic test", () -> assertTrue(isPalindrome("madam"))),
+            dynamicTest("6th dynamic test", () -> assertEquals(4, calculator.multiply(2, 2)))
+        ).iterator();
+    }
+
+    @TestFactory
+    DynamicTest[] dynamicTestsFromArray() {
+        return new DynamicTest[] {
+            dynamicTest("7th dynamic test", () -> assertTrue(isPalindrome("madam"))),
+            dynamicTest("8th dynamic test", () -> assertEquals(4, calculator.multiply(2, 2)))
+        };
+    }
+
+    @TestFactory
+    Stream<DynamicTest> dynamicTestsFromStream() {
+        return Stream.of("racecar", "radar", "mom", "dad")
+            .map(text -> dynamicTest(text, () -> assertTrue(isPalindrome(text))));
+    }
+
+    @TestFactory
+    Stream<DynamicTest> dynamicTestsFromIntStream() {
+        // Generates tests for the first 10 even integers.
+        return IntStream.iterate(0, n -> n + 2).limit(10)
+            .mapToObj(n -> dynamicTest("test" + n, () -> assertTrue(n % 2 == 0)));
+    }
+
+    @TestFactory
+    Stream<DynamicTest> generateRandomNumberOfTestsFromIterator() {
+
+        // Generates random positive integers between 0 and 100 until
+        // a number evenly divisible by 7 is encountered.
+        Iterator<Integer> inputGenerator = new Iterator<Integer>() {
+
+            Random random = new Random();
+            int current;
+
+            @Override
+            public boolean hasNext() {
+                current = random.nextInt(100);
+                return current % 7 != 0;
+            }
+
+            @Override
+            public Integer next() {
+                return current;
+            }
+        };
+
+        // Generates display names like: input:5, input:37, input:85, etc.
+        Function<Integer, String> displayNameGenerator = (input) -> "input:" + input;
+
+        // Executes tests based on the current input value.
+        ThrowingConsumer<Integer> testExecutor = (input) -> assertTrue(input % 7 != 0);
+
+        // Returns a stream of dynamic tests.
+        return DynamicTest.stream(inputGenerator, displayNameGenerator, testExecutor);
+    }
+
+    @TestFactory
+    Stream<DynamicTest> dynamicTestsFromStreamFactoryMethod() {
+        // Stream of palindromes to check
+        Stream<String> inputStream = Stream.of("racecar", "radar", "mom", "dad");
+
+        // Generates display names like: racecar is a palindrome
+        Function<String, String> displayNameGenerator = text -> text + " is a palindrome";
+
+        // Executes tests based on the current input value.
+        ThrowingConsumer<String> testExecutor = text -> assertTrue(isPalindrome(text));
+
+        // Returns a stream of dynamic tests.
+        return DynamicTest.stream(inputStream, displayNameGenerator, testExecutor);
+    }
+
+    @TestFactory
+    Stream<DynamicTest> dynamicTestsFromStreamFactoryMethodWithNames() {
+        // Stream of palindromes to check
+        Stream<Named<String>> inputStream = Stream.of(
+                named("racecar is a palindrome", "racecar"),
+                named("radar is also a palindrome", "radar"),
+                named("mom also seems to be a palindrome", "mom"),
+                named("dad is yet another palindrome", "dad")
+            );
+
+        // Returns a stream of dynamic tests.
+        return DynamicTest.stream(inputStream,
+            text -> assertTrue(isPalindrome(text)));
+    }
+
+    @TestFactory
+    Stream<DynamicNode> dynamicTestsWithContainers() {
+        return Stream.of("A", "B", "C")
+            .map(input -> dynamicContainer("Container " + input, Stream.of(
+                dynamicTest("not null", () -> assertNotNull(input)),
+                dynamicContainer("properties", Stream.of(
+                    dynamicTest("length > 0", () -> assertTrue(input.length() > 0)),
+                    dynamicTest("not empty", () -> assertFalse(input.isEmpty()))
+                ))
+            )));
+    }
+
+    @TestFactory
+    DynamicNode dynamicNodeSingleTest() {
+        return dynamicTest("'pop' is a palindrome", () -> assertTrue(isPalindrome("pop")));
+    }
+
+    @TestFactory
+    DynamicNode dynamicNodeSingleContainer() {
+        return dynamicContainer("palindromes",
+            Stream.of("racecar", "radar", "mom", "dad")
+                .map(text -> dynamicTest(text, () -> assertTrue(isPalindrome(text)))
+        ));
+    }
+
+}
+```
+
+### 13.6 Timeouts（超时）
+
+@Timeout注解允许声明如果测试、测试工厂、测试模板或生命周期方法的执行时间超过给定的持续时间，它应该失败。持续时间的时间单位默认为秒，但可配置。
+
+```java
+class TimeoutDemo {
+
+    @BeforeEach
+    @Timeout(5)
+    void setUp() {
+        // fails if execution time exceeds 5 seconds
+    }
+
+    @Test
+    @Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
+    void failsIfExecutionTimeExceeds100Milliseconds() {
+        // fails if execution time exceeds 100 milliseconds
+    }
+}
+```
